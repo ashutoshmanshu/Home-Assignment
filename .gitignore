@@ -1,0 +1,17 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Office / temp lock files
+~$*
+
+# Build / dependency artifacts
+node_modules/
+dist/
+build/
+target/
+bin/
+obj/
+*.log
