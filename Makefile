@@ -9,8 +9,8 @@
 #   make clean      remove build artifacts
 
 CXX      ?= g++
-CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Wpedantic
-LDFLAGS  ?=
+CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread
+LDFLAGS  ?= -pthread
 
 SRC_DIR   := src
 TEST_DIR  := tests
@@ -22,12 +22,15 @@ LIB_SRCS  := $(SRC_DIR)/OrderBook.cpp $(SRC_DIR)/MessageParser.cpp
 ENGINE_SRCS := $(SRC_DIR)/main.cpp $(LIB_SRCS)
 ENGINE_BIN  := $(BUILD_DIR)/matching_engine
 
-TEST_SRCS := $(TEST_DIR)/test_main.cpp $(LIB_SRCS)
+TEST_SRCS := $(TEST_DIR)/test_main.cpp $(TEST_DIR)/test_components.cpp $(LIB_SRCS)
 TEST_BIN  := $(BUILD_DIR)/run_tests
+
+LAT_SRCS := bench/bench_latency.cpp $(LIB_SRCS)
+LAT_BIN  := $(BUILD_DIR)/bench_latency
 
 COUNT ?= 1000000
 
-.PHONY: all test datasets bench all-checks clean
+.PHONY: all test datasets bench latency all-checks clean
 
 all: $(ENGINE_BIN)
 
@@ -45,6 +48,12 @@ datasets: $(ENGINE_BIN)
 
 bench: $(ENGINE_BIN)
 	bash scripts/bench.sh ./$(ENGINE_BIN) $(COUNT)
+
+$(LAT_BIN): $(LAT_SRCS) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(LAT_SRCS) -o $@ $(LDFLAGS)
+
+latency: $(LAT_BIN)
+	./$(LAT_BIN) $(COUNT)
 
 all-checks: test datasets
 

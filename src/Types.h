@@ -13,6 +13,11 @@ using OrderId = std::uint64_t;
 // realistic aggregate size and avoids overflow when summing levels.
 using Quantity = std::uint64_t;
 
+// Slot index into the order pool / id index. 0xFFFFFFFF is the "none" sentinel
+// (we never have 2^32-1 live orders), so we avoid pointers and stay cache-dense.
+using Slot = std::uint32_t;
+inline constexpr Slot kNoSlot = 0xFFFFFFFFu;
+
 // Side of an order. Wire format encodes Buy as 0 and Sell as 1.
 enum class Side : std::uint8_t { Buy = 0, Sell = 1 };
 

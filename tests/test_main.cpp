@@ -280,6 +280,42 @@ TEST_CASE(book_id_is_reusable_after_full_fill) {
     CHECK(book.contains(1));
 }
 
+// ===========================================================================
+// OrderBook: array-band fast path vs. out-of-band ordered-map fallback.
+// The band is centred on the first price seen, so prices far from it land in
+// the fallback map. Matching and best-price must stay correct across both.
+// ===========================================================================
+TEST_CASE(book_matches_across_band_and_fallback) {
+    OrderBook book;
+    RecordingSink sink;
+    book.addOrder(1, Side::Sell, px("1000"), 5, sink); // first -> centres band (in-band)
+    book.addOrder(2, Side::Sell, px("5000"), 3, sink); // far away -> ask fallback
+    book.addOrder(3, Side::Buy,  px("100"), 4, sink);  // far below -> bid fallback
+    CHECK(book.bestAsk() == px("1000"));
+    CHECK(book.bestBid() == px("100"));
+    sink.clear();
+
+    // Aggressive buy of 8 @ 5000 sweeps the band level then the fallback level.
+    book.addOrder(4, Side::Buy, px("5000"), 8, sink);
+    checkSequence(sink.lines(), {
+        "2,5,1000", "4,4,3", "3,1",   // band ask filled first (best price)
+        "2,3,5000", "3,4", "3,2",     // fallback ask filled next
+    });
+    CHECK(book.bestBid() == px("100")); // the resting buy at 100 remains
+    CHECK_FALSE(book.bestAsk().has_value());
+}
+
+TEST_CASE(book_best_price_merges_band_and_fallback) {
+    OrderBook book;
+    RecordingSink sink;
+    book.addOrder(1, Side::Buy, px("1000"), 1, sink); // centres band
+    book.addOrder(2, Side::Buy, px("5000"), 1, sink); // fallback, higher
+    book.addOrder(3, Side::Buy, px("1001"), 1, sink); // band
+    CHECK(book.bestBid() == px("5000"));              // fallback wins
+    CHECK(book.cancelOrder(2));                        // remove fallback best
+    CHECK(book.bestBid() == px("1001"));              // band now best
+}
+
 int main() {
     return metest::runAll();
 }
