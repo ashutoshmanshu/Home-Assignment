@@ -7,11 +7,7 @@ Thumbs.db
 # Office / temp lock files
 ~$*
 
-# Build / dependency artifacts
-node_modules/
-dist/
+# Build artifacts (the prebuilt Linux binary in bin/ is committed deliberately)
 build/
-target/
-bin/
-obj/
+*.o
 *.log

@@ -1,0 +1,6 @@
+Duplicate order id ignored: 1
+Unknown message type: BADMESSAGE
+Invalid side (expected 0 or 1): 0,2,3,5,100
+Invalid quantity (expected positive integer): 0,3,0,0,100
+Invalid price (expected positive decimal): 0,4,0,5,xyz
+Cancel for unknown order id ignored: 1

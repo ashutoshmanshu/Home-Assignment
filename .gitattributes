@@ -1,0 +1,15 @@
+# Keep text files LF-normalized in the repo regardless of host OS, so the
+# scripts and source build cleanly on Linux.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+Makefile    text eol=lf
+*.cpp       text eol=lf
+*.h         text eol=lf
+*.in        text eol=lf
+*.out       text eol=lf
+*.err       text eol=lf
+
+# Binary artifacts must never be line-ending converted.
+*.docx          binary
+bin/matching_engine binary

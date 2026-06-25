@@ -1,0 +1,3 @@
+# Fixed-point decimal prices: trade prints at the resting price (100.25).
+0,1,1,5,100.25
+0,2,0,5,100.5
