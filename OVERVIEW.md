@@ -4,7 +4,7 @@ Price–time (FIFO) limit order book. Reads order messages on `stdin`, matches
 crossing orders, writes trades/fills to `stdout`, errors to `stderr`. C++17,
 Linux, no third-party deps.
 
-📖 Full details: [README.md](README.md) · 🖼️ Diagrams: [ARCHITECTURE.md](ARCHITECTURE.md)
+📖 Full details: [README.md](README.md) · 🖼️ Diagrams: [ARCHITECTURE.md](ARCHITECTURE.md) · 🌐 Visual guide: [how-it-works.html](how-it-works.html)
 
 ## Build & run
 

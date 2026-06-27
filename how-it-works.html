@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matching Engine — How It Works</title>
+<style>
+  :root{
+    --bg:#0f1320; --card:#171c2e; --ink:#e7ecf5; --mut:#9aa6c2;
+    --buy:#2fbf71; --sell:#ef5b6b; --agg:#4d9bff; --out:#f4c04d; --line:#2a3350;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:28px;}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);
+     margin:30px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .sub{color:var(--mut);margin:0 0 8px}
+  code,.mono{font-family:ui-monospace,Consolas,monospace}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:10px;
+       padding:10px 14px;text-align:center;min-width:90px}
+  .arrow{color:var(--mut);font-size:20px}
+  .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;
+        font-family:ui-monospace,monospace}
+  .b-buy{background:rgba(47,191,113,.15);color:var(--buy);border:1px solid var(--buy)}
+  .b-sell{background:rgba(239,91,107,.15);color:var(--sell);border:1px solid var(--sell)}
+  .b-agg{background:rgba(77,155,255,.15);color:var(--agg);border:1px solid var(--agg)}
+  .b-out{background:rgba(244,192,77,.13);color:var(--out);border:1px solid var(--out)}
+  table{border-collapse:collapse;width:100%}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:14px}
+  th{color:var(--mut);font-weight:600}
+  .ladder{min-width:230px}
+  .lvl{display:flex;align-items:center;gap:8px;margin:4px 0}
+  .px{width:54px;text-align:right;color:var(--mut);font-family:ui-monospace,monospace}
+  .chip{font-family:ui-monospace,monospace;font-size:12px;border-radius:8px;padding:3px 8px;
+        border:1px solid var(--line)}
+  .chip.s{background:rgba(239,91,107,.12);border-color:rgba(239,91,107,.5)}
+  .chip.b{background:rgba(47,191,113,.12);border-color:rgba(47,191,113,.5)}
+  .chip.dead{opacity:.32;text-decoration:line-through}
+  .out{font-family:ui-monospace,monospace;font-size:13px;background:#0c1020;
+       border:1px dashed var(--out);border-radius:8px;padding:8px 10px;color:var(--out);white-space:pre}
+  .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .k{font-weight:700}
+  pre.diag{background:#0c1020;border:1px solid var(--line);border-radius:10px;padding:14px;
+           overflow:auto;color:#cdd7f0;font-size:12.5px;line-height:1.45}
+  .note{color:var(--mut);font-size:13px}
+  .tag{font-size:11px;color:var(--mut)}
+  .big{font-size:18px}
+</style>
+</head>
+<body>
+
+<h1>Matching Engine — How It Works</h1>
+<p class="sub">Visual guide · read top-to-bottom in ~60 seconds · <span class="tag">buy=green · sell=red · aggressive=blue · output=yellow</span></p>
+
+<h2>1 · The whole thing in one line</h2>
+<div class="flow">
+  <div class="box">📥 <b>stdin</b><br><span class="tag">CSV messages</span></div>
+  <span class="arrow">→</span>
+  <div class="box">🧹 <b>parse</b><br><span class="tag">+ validate</span></div>
+  <span class="arrow">→</span>
+  <div class="box">⚙️ <b>OrderBook</b><br><span class="tag">match</span></div>
+  <span class="arrow">→</span>
+  <div class="box">📤 <b>stdout</b><br><span class="tag">trades / fills</span></div>
+</div>
+<p class="note">Bad line → message to <b>stderr</b>, skip, keep going. Nothing crashes.</p>
+
+<h2>2 · The 5 message types</h2>
+<div class="row">
+  <div class="card" style="flex:1;min-width:260px">
+    <div class="tag">YOU SEND (input)</div>
+    <p><span class="pill b-buy">0</span> add &nbsp; <code>0,id,side,qty,price</code> &nbsp;<span class="tag">side 0=buy 1=sell</span></p>
+    <p><span class="pill b-sell">1</span> cancel &nbsp; <code>1,id</code></p>
+  </div>
+  <div class="card" style="flex:1;min-width:260px">
+    <div class="tag">ENGINE EMITS (output)</div>
+    <p><span class="pill b-out">2</span> trade &nbsp; <code>2,qty,price</code></p>
+    <p><span class="pill b-out">3</span> fully filled &nbsp; <code>3,id</code></p>
+    <p><span class="pill b-out">4</span> partially filled &nbsp; <code>4,id,newQty</code></p>
+  </div>
+</div>
+
+<h2>3 · The order book (the picture in your head)</h2>
+<div class="row">
+  <div class="card ladder">
+    <div class="tag" style="color:var(--sell)">ASKS — sells, lowest price = best</div>
+    <div class="lvl"><span class="px">1075</span><span class="chip s">#00 ·1</span></div>
+    <div class="lvl"><span class="px">1050</span><span class="chip s">#03 ·10</span></div>
+    <div class="lvl"><span class="px">1025</span><span class="chip s">#05 ·2</span><span class="chip s">#07 ·5</span> <span class="tag">←oldest first</span></div>
+    <hr style="border:none;border-top:1px dashed var(--line);margin:10px 0">
+    <div class="tag" style="color:var(--buy)">BIDS — buys, highest price = best</div>
+    <div class="lvl"><span class="px">1000</span><span class="chip b">#01 ·9</span><span class="chip b">#06 ·1</span></div>
+    <div class="lvl"><span class="px">975</span><span class="chip b">#02 ·30</span></div>
+  </div>
+  <div class="card" style="flex:1;min-width:240px">
+    <p class="big">Two sorted price ladders.</p>
+    <p>• Each <b>price level</b> is a <b>queue</b> — oldest order matches first (time priority).</p>
+    <p>• <b>Best ask</b> = lowest sell. <b>Best bid</b> = highest buy.</p>
+    <p>• A new order only trades if it <b>crosses</b> the best price on the other side.</p>
+  </div>
+</div>
+
+<h2>4 · The one matching rule</h2>
+<div class="card">
+  <p class="big">A <span class="b-agg pill">BUY</span> crosses when <code>buy price ≥ best ask</code>&nbsp; (a sell: <code>sell price ≤ best bid</code>).</p>
+  <p>When it crosses → <b>trade</b> for <code>min(both quantities)</code> at the <b>resting</b> order's price.<br>
+     Still have quantity left? keep eating the next best/oldest order. Nothing left to cross? the remainder <b>rests</b> in the book.</p>
+</div>
+
+<h2>5 · Watch one order match — <span class="b-agg pill">BUY 3 @ 1050</span></h2>
+<div class="row">
+  <!-- before -->
+  <div class="card" style="flex:1;min-width:230px">
+    <div class="tag">BEFORE</div>
+    <div class="lvl"><span class="px">1075</span><span class="chip s">#00 ·1</span></div>
+    <div class="lvl"><span class="px">1050</span><span class="chip s">#03 ·10</span></div>
+    <div class="lvl"><span class="px">1025</span><span class="chip s">#05 ·2</span><span class="chip s">#07 ·5</span></div>
+    <p class="note">best ask = 1025 ≤ 1050 → cross!</p>
+  </div>
+  <span class="arrow">→</span>
+  <!-- step1 -->
+  <div class="card" style="flex:1;min-width:230px">
+    <div class="tag">STEP 1 · hit oldest @1025</div>
+    <div class="lvl"><span class="px">1025</span><span class="chip s dead">#05 ·2</span><span class="chip s">#07 ·5</span></div>
+    <p class="note">trade min(3,2)=2 · buy 3→1 · #05 emptied</p>
+    <div class="out">2,2,1025
+4,1000008,1
+3,1000005</div>
+  </div>
+  <span class="arrow">→</span>
+  <!-- step2 -->
+  <div class="card" style="flex:1;min-width:230px">
+    <div class="tag">STEP 2 · next oldest @1025</div>
+    <div class="lvl"><span class="px">1025</span><span class="chip s">#07 ·5→4</span></div>
+    <p class="note">trade min(1,5)=1 · buy 1→0 done · #07 left 4</p>
+    <div class="out">2,1,1025
+3,1000008
+4,1000007,4</div>
+  </div>
+</div>
+<p class="note">Per pair, output is always: <b class="k">trade</b> → <b class="k">aggressive</b> fill → <b class="k">resting</b> fill. The buy was fully filled, so it never rests.</p>
+
+<h2>6 · Why it's fast (the HFT bits)</h2>
+<div class="grid4">
+  <div class="card"><b>🧱 No allocations</b><p class="note">Orders live in one big pre-made array (pool). Links between them are array indexes, not <code>new</code>/<code>delete</code>.</p></div>
+  <div class="card"><b>⚡ O(1) best price</b><p class="note">Price levels are a flat array; a <b>bitmap</b> marks non-empty levels → best price = one CPU bit-scan, not a tree search.</p></div>
+  <div class="card"><b>🔎 O(1) cancel</b><p class="note">A hash map <code>id → slot</code> jumps straight to the order; unlink it from its queue in O(1).</p></div>
+  <div class="card"><b>🔒 Lock-free at the edge</b><p class="note">Book runs on <b>one thread</b> (fair + deterministic). A lock-free ring only hands work in (<code>--pipeline</code>).</p></div>
+</div>
+
+<h2>7 · Under the hood (memory layout)</h2>
+<pre class="diag">
+  best ask = lowest set bit            best bid = highest set bit
+       v                                       v
+ askBitmap 0 0 1 0 0 1 ...      bidBitmap ... 1 0 0 1 0 0
+              |                                 |
+ askBand[]  [ ][L][ ]..[L]      bidBand[]  [L]..[ ][L][ ]     (array indexed by price)
+                 |
+                 v   queue at this price (oldest -> newest)
+        head ->[Node]->[Node]->[Node]<- tail
+                id      id      id
+                qty     qty     qty
+                 ^
+  id --hash--> slot ---+        idIndex: O(1) cancel
+                       v
+ nodes_: [ ==== one pooled array of Node + free-list of reusable slots ==== ]
+
+ (price far outside the array?  -> handled by a slower fallback map. always correct.)
+</pre>
+
+<h2>8 · Speed I measured</h2>
+<div class="row">
+  <div class="card" style="flex:1"><b>per operation</b><p class="mono">add ~74ns · cancel ~57ns · match ~159ns</p></div>
+  <div class="card" style="flex:1"><b>throughput</b><p class="mono">~1.12M/s single · ~1.85M/s --pipeline</p></div>
+</div>
+<p class="note">Dev container, not tuned hardware — shows the shape (flat, O(1)), not final numbers.</p>
+
+<p class="note" style="margin-top:26px">Files: <code>src/OrderBook.*</code> (engine) · <code>SpscRing.h</code> (lock-free ring) · <code>OccupancyBitmap.h</code> (best-price) · <code>IdIndex.h</code> (cancel) · <code>Price.h</code> (fixed-point).</p>
+
+</body>
+</html>
