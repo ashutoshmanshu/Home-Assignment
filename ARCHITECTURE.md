@@ -13,7 +13,7 @@ flowchart LR
   SNK --> OUT[stdout: Trade / Fill]
 ```
 
-## 2. Threading — book is single-threaded; lock-free only at the edge
+## 2. Threading: single-threaded book, lock-free only at the edge
 
 ```mermaid
 flowchart LR
@@ -30,7 +30,7 @@ flowchart LR
 > Determinism (price-time priority + atomic sweeps) needs a serial book.
 > Scale by **one book per symbol across cores**, not by locking one book.
 
-## 3. Order book — the core data structure
+## 3. Order book (the core data structure)
 
 ```
         best ask = lowest set bit                 best bid = highest set bit
@@ -53,7 +53,7 @@ flowchart LR
 ```
 
 Out-of-band prices (outside the array) fall back to an ordered `std::map`
-(slow path) so **any** price is correct — only speed depends on the band.
+(slow path) so **any** price is correct. Only speed depends on the band.
 
 ## 4. Matching loop
 
@@ -73,7 +73,7 @@ flowchart TD
   R --> D
 ```
 
-## 5. Output order — per matched pair
+## 5. Output order, per matched pair
 
 ```
  ┌─────────────┐   ┌──────────────────────┐   ┌────────────────────┐
@@ -92,7 +92,7 @@ flowchart TD
 | Rest a resting order (in-band)| **O(1)**        |
 | Out-of-band level (fallback)  | O(log L)        |
 
-## 7. Worked example — buy 3 @ 1050 sweeps the 1025 asks
+## 7. Worked example: buy 3 @ 1050 sweeps the 1025 asks
 
 ```
    ASKS (before)            aggressive: BUY 3 @ 1050
@@ -110,7 +110,7 @@ flowchart TD
    4,1000007,4
 ```
 
-## 8. Measured (dev container — see README for caveats)
+## 8. Measured (dev container; see README for caveats)
 
 ```
 add (rest)  ~74 ns   |  cancel ~57 ns   |  add (match) ~159 ns   (amortized)

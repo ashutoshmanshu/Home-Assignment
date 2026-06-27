@@ -14,12 +14,12 @@ namespace me {
 // order book itself must stay single-threaded for deterministic price-time
 // priority, so concurrency is confined to the hand-off between the I/O thread
 // and the matching thread. One producer pushes, one consumer pops; no mutex,
-// no CAS loop — just a pair of indices published with release/acquire ordering.
+// no CAS loop, just a pair of indices published with release/acquire ordering.
 //
 // Design notes for low latency:
 //   * Capacity is a power of two so wrap-around is a mask, not a modulo.
 //   * head_ (consumer) and tail_ (producer) sit on separate cache lines to
-//     avoid false sharing — otherwise each side's store would invalidate the
+//     avoid false sharing; otherwise each side's store would invalidate the
 //     other core's cache line on every operation.
 //   * Each side caches the other index and only reloads the shared atomic when
 //     its cached view says "full"/"empty", cutting cross-core traffic.

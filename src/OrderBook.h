@@ -25,7 +25,7 @@ namespace me {
 //     heap allocation on the hot path and no pointer chasing across cache lines
 //     the way std::list / std::map nodes would impose.
 //   * Price levels are a flat array indexed by price tick, with a 3-level
-//     occupancy bitmap that yields best-bid / best-ask in O(1) via bit-scan —
+//     occupancy bitmap that yields best-bid / best-ask in O(1) via bit-scan,
 //     replacing a red-black tree's O(log L) walk. The array spans a price band
 //     (the instrument's intraday range); prices outside it fall back to an
 //     ordered map so *any* price is still handled correctly, just on a slower
@@ -56,8 +56,8 @@ public:
 
 private:
     // Size of the flat price-level array per side, in ticks. 2^20 ticks at the
-    // Price scale (1e-4) spans ~104 price units around the market — comfortably
-    // an instrument's intraday band — for ~8 MB/side. Out-of-band prices use the
+    // Price scale (1e-4) spans ~104 price units around the market, comfortably
+    // an instrument's intraday band, for ~8 MB/side. Out-of-band prices use the
     // ordered-map fallback.
     static constexpr std::size_t kBandTicks = std::size_t(1) << 20;
 

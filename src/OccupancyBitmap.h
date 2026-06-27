@@ -14,7 +14,7 @@ namespace me {
 // hardware bit-scan instructions, which is exactly what best-bid / best-ask
 // discovery needs once price levels live in a flat array. Each level summarizes
 // the one below it (1 bit per 64-bit word), so for a 2^21 range we descend at
-// most three words deep regardless of how sparse the book is — no tree walk,
+// most three words deep regardless of how sparse the book is. No tree walk,
 // no pointer chasing.
 class OccupancyBitmap {
 public:

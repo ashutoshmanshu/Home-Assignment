@@ -1,7 +1,7 @@
 // Per-operation latency harness for the matching engine.
 //
-// It measures the three paths the assignment calls out — an add that matches,
-// an add that rests (no match), and a cancel — and reports both:
+// It measures the three paths the assignment calls out: an add that matches,
+// an add that rests (no match), and a cancel. It reports both:
 //   * amortized ns/op  : a clean timer-free loop (total wall time / N), the
 //                        truest per-op cost.
 //   * p50/p99/p99.9/max: a separate per-op timed loop, showing the distribution

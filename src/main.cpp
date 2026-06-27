@@ -40,7 +40,7 @@ int runSingleThreaded() {
 }
 
 // A compact, fixed-size command crossing the lock-free ring. Validation happens
-// on the ingress thread, so only well-formed commands reach the matcher — the
+// on the ingress thread, so only well-formed commands reach the matcher. The
 // queue carries no std::string and allocates nothing.
 struct Command {
     enum class Op : std::uint8_t { Add, Cancel } op;
@@ -52,7 +52,7 @@ struct Command {
 
 // Optional pipeline path (--pipeline): the I/O/parse thread feeds the
 // single-writer matching thread through the SPSC ring. This is the production
-// shape — lock-free hand-off at the boundary, the book still single-threaded so
+// shape: a lock-free hand-off at the boundary, with the book still single-threaded so
 // price-time priority stays deterministic. stdout is written only by the
 // matcher, so output order is identical to single-threaded mode.
 int runPipeline() {
